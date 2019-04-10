@@ -44,6 +44,10 @@ Server for [Hello Mentors](https://github.com/crosenblatt/hello-mentors)
   2. Run `docker-compose -f "docker-compose.debug.yml" up -d --build`
   3. Server is now running and mysql will use ./mysql-volume to store its data
 
+### Features not in default server
+  - node --inspect available at port 9229 for attaching a debugger
+  - adminer running on port 8080 for database inspection
+
 ### Teardown
   1. Run `docker-compose -f "docker-compose.debug.yml" down`
   2. Docker containers will be stopped and deleted

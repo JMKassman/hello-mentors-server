@@ -20,7 +20,7 @@ services:
     env_file:
       - .env
     ports:
-      - 3000:3000
+      - ${PORT}:${PORT}
     depends_on:
       mysql:
         condition: service_healthy
