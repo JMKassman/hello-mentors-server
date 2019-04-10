@@ -1,9 +1,8 @@
-sudo: required
 services:
   - docker
 
-  script:
-    - docker build -t jkassman/hello-mentors-server:latest .
+script:
+  - docker build -t jkassman/hello-mentors-server:latest .
 
-  after script:
-    - docker images
+after script:
+  - docker images
