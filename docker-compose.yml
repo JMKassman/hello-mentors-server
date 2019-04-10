@@ -14,7 +14,10 @@ services:
 
   hello-mentors-server:
     image: hello-mentors-server
-    build: .
+    build: 
+      context: .
+      args:
+        PORT: ${PORT}
     environment:
       NODE_ENV: production
     env_file:
