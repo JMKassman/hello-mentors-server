@@ -24,13 +24,26 @@ Server for [Hello Mentors](https://github.com/crosenblatt/hello-mentors)
   
 ### Setup
   1. Copy .env.template to .env and populate the variables
-  2. Run `docker-compose up`
+  2. Run `docker-compose -f "docker-compose.yml" up -d --build`
   3. Server is now running and mysql will use ./mysql-volume to store its data
  
 ### Teardown
-  1. Run `docker-compose down`
+  1. Run `docker-compose -f "docker-compose.yml" down`
   2. Docker containers will be stopped and deleted
   3. (Optional) Delete ./mysql-volume to remove the database
   
-## Running the debug server
- - To be added later
+## Running the debug server in docker
+
+### Requirements
+  - docker
+  - docker-compose
+
+### Setup
+  1. Copy .env.template to .env and populate the variables
+  2. Run `docker-compose -f "docker-compose.debug.yml" up -d --build`
+  3. Server is now running and mysql will use ./mysql-volume to store its data
+
+### Teardown
+  1. Run `docker-compose -f "docker-compose.debug.yml" down`
+  2. Docker containers will be stopped and deleted
+  3. (Optional) Delete ./mysql-volume to remove the database
