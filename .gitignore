@@ -85,3 +85,6 @@ typings/
 
 # MySQL Local files
 mysql-volume/
+
+# VSCode files
+.vscode/
