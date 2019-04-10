@@ -1,8 +1,9 @@
+language: minimal
 services:
   - docker
 
 script:
   - docker build -t jkassman/hello-mentors-server:latest .
 
-after script:
+after_script:
   - docker images
