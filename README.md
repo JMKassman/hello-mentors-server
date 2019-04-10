@@ -1,4 +1,5 @@
-# Hello Mentors Server
+# Hello Mentors Server 
+[![Build Status](https://travis-ci.org/JMKassman/hello-mentors-server.svg?branch=master)](https://travis-ci.org/JMKassman/hello-mentors-server)
 
 Server for [Hello Mentors](https://github.com/crosenblatt/hello-mentors)
 
