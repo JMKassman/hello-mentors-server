@@ -45,6 +45,7 @@ Server for [Hello Mentors](https://github.com/crosenblatt/hello-mentors)
   3. Server is now running and mysql will use ./mysql-volume to store its data
 
 ### Features not in default server
+  - Database is prepopulated with sample data
   - node --inspect available at port 9229 for attaching a debugger
   - adminer running on port 8080 for database inspection
 
