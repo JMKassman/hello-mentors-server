@@ -1,10 +1,10 @@
-const express = require('express');
-const mysql = require('mysql');
+import express from 'express';
+import { createConnection } from 'mysql';
 const app = express();
 const port = process.env.PORT || 3000;
 
-const connection = mysql.createConnection({
-    host: 'mysql',
+const connection = createConnection({
+    host: process.env.MYSQL_HOST,
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DATABASE
@@ -17,6 +17,11 @@ connection.query(' SELECT 1 + 1 AS solution', (err, rows, fields) => {
     console.log('The solution is: ', rows[0].solution);
 });
 
-app.get('/', (req, res) => res.send("Hello World!"));
+connection.query('SELECT * FROM users', (err, rows, fields) => {
+    if (err) throw err;
+    console.log(rows[0].name);
+});
+
+app.get('/', (req, res) => res.send("Hello Worlds!"));
 
 app.listen(port, () => console.log(`App is listening on port ${port}`));
