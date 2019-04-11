@@ -24,6 +24,7 @@ services:
       context: .
       args:
         PORT: ${PORT}
+        ENV: dev
     environment:
       NODE_ENV: development
     env_file:
@@ -31,7 +32,7 @@ services:
     ports:
       - ${PORT}:${PORT}
       - 9229:9229
-    command: node --inspect=0.0.0.0:9229 index.js
+    command: npm run debug
     depends_on:
       mysql:
         condition: service_healthy

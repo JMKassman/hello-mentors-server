@@ -1,9 +1,10 @@
 FROM node:10.13-alpine
-ENV NODE_ENV production
+ARG PORT
+ARG ENV
+ENV NODE_ENV ${ENV}
 WORKDIR /usr/src/app
 COPY ["package.json", "package-lock.json*", "npm-shrinkwrap.json*", "./"]
-RUN npm install --production --silent && mv node_modules ../
+RUN npm install
 COPY . .
-ARG PORT
 EXPOSE ${PORT}
 CMD npm start
