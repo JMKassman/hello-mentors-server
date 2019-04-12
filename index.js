@@ -161,4 +161,25 @@ app.post('/api/submit-ticket', (req, res) => {
                         });
 });
 
+app.get('/api/get-open-tickets', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    if (req.user.role !== "Mentor" && req.user.role !== "Organizer") {
+        res.sendStatus(403);
+        return;
+    }
+    connection.query("SELECT users.name, users.email, tickets.submit_time, tickets.location, tickets.tags, tickets.message FROM tickets INNER JOIN users ON tickets.hacker_id=users.id WHERE tickets.status = 'Open'", 
+                    (err, rows) => {
+                        if (err) {
+                            res.sendStatus(500);
+                            return;
+                        }
+                        console.log(`Sending open tickets to ${req.user.name}`);
+                        console.log(rows);
+                        res.json(rows);
+                    });
+});
+
 app.listen(port, () => console.log(`App is listening on port ${port}`));
