@@ -1,4 +1,4 @@
-FROM node:10.13-alpine
+FROM node:10.13
 ARG PORT=3000
 ARG ENV=production
 ENV NODE_ENV ${ENV}
