@@ -25,6 +25,8 @@ services:
       - .env
     ports:
       - ${PORT}:${PORT}
+    volumes:
+      - ./sessions:/usr/app/src/sessions
     depends_on:
       mysql:
         condition: service_healthy
