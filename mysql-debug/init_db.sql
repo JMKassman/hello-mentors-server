@@ -1,5 +1,9 @@
 CREATE DATABASE IF NOT EXISTS `hello-mentors`;
 
+CREATE DATABASE IF NOT EXISTS `sessions`;
+
+GRANT ALL PRIVILEGES ON sessions.* TO dbuser;
+
 USE `hello-mentors`;
 
 CREATE TABLE `users`

@@ -20,6 +20,7 @@ services:
         PORT: ${PORT}
         ENV: production
     environment:
+      MYSQL_HOST: mysql
       NODE_ENV: production
     env_file:
       - .env

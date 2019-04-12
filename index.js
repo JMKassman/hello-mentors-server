@@ -4,7 +4,7 @@ const passport = require('passport');
 const LocalStrategy = require( 'passport-local').Strategy;
 const session = require('express-session');
 const bodyParser = require('body-parser');
-const FileStore = require('session-file-store')(session);
+const MySQLStore = require('express-mysql-session')(session);
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -15,6 +15,14 @@ const connection = mysql.createConnection({
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DATABASE
 });
+
+const sessionStore = new MySQLStore({
+    host: process.env.MYSQL_HOST,
+    port: 3306,
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_PASSWORD,
+    database: "sessions"
+})
 
 connection.connect();
 
@@ -38,7 +46,7 @@ passport.deserializeUser((id, done) => {
     });
 });
 
-app.use(session({ store: new FileStore(), secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: true }));
+app.use(session({ store: sessionStore, secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: true }));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(passport.initialize());
 app.use(passport.session());
