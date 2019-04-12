@@ -77,6 +77,10 @@ app.get('/', (req, res) => {
 });
 
 app.get('/login', (req, res) => {
+    if (req.isAuthenticated()) {
+        res.redirect('/');
+        return;
+    }
     res.sendFile('/usr/src/app/static/login.html');
 });
 app.post('/login', (req, res, next) => {
