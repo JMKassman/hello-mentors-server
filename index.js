@@ -50,6 +50,7 @@ passport.deserializeUser((id, done) => {
 
 app.use(session({ store: sessionStore, secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: true }));
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.static("/usr/src/app/static"));
@@ -87,6 +88,36 @@ app.get('/hacker', (req,res) => {
         return;
     }
     res.sendFile('/usr/src/app/static/hacker.html');
+});
+
+/**
+ * Creates a new ticket in the system defined by JSON or application/x-www-form-urlencoded
+ * {
+ *  location: "string",
+ *  tags: "string", //format: 'tag1,tag2,...'
+ *  message: "string"
+ * }
+ */
+app.post('/api/submit-ticket', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    let time = new Date().toISOString();
+    let timeString = `${time.getFullYear()}-${time.getMonth()+1}-${time.getDate()} ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`;
+    connection.query("INSERT INTO tickets (hacker_id, submit_time, status, location, tags, message) VALUES(?, ?, 'Open', ?, ?, ?)",
+                        [req.user.id, timeString, req.body.location, req.body.tags, req.body.message],
+                        (err, result) => {
+                            if (err) {
+                                res.sendStatus(400);
+                                return;
+                            }
+                            if (result.affectedRows === 1) {
+                                res.sendStatus(201);
+                                return;
+                            }
+                            res.sendStatus(400);
+                        });
 });
 
 app.get('/mentor', (req, res) => {
