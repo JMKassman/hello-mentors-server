@@ -31,7 +31,6 @@ passport.use(new LocalStrategy((username, password, done) => {
     connection.query('SELECT * FROM users WHERE username = ?', [username], (err, rows) => {
         if (err) return done(err);
         if (rows.length !== 1) return done(null, false);
-        //TODO: properly store and check passwords
         bcrypt.compare(password, rows[0].password, (err, same) => {
             return same ? done(null, rows[0]) : done(null, false);
         });
@@ -61,7 +60,6 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res, next) => {
     passport.authenticate('local', (err, user, info) => {
         req.login(user, (err) => {
-            console.log(err);
             if (err) {
                 return res.redirect('/login?err');
             }
@@ -79,9 +77,59 @@ app.get('/hello', (req, res) => {
     res.send("Hello World!")
 });
 
+app.get('/hacker', (req,res) => {
+    if (!req.isAuthenticated()) {
+        res.redirect('/login');
+        return;
+    }
+    if (req.user.role !== "Hacker" && req.user.role !== "Organizer") {
+        res.redirect('/');
+        return;
+    }
+    res.sendFile('/usr/src/app/static/hacker.html');
+});
+
+app.get('/mentor', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.redirect('/login');
+        return;
+    }
+    if (req.user.role !== "Mentor" && req.user.role !== "Organizer") {
+        res.redirect('/');
+        return;
+    }
+    res.sendFile('/usr/src/app/static/mentor.html');
+});
+
+app.get('/organizer', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.redirect('/login');
+        return;
+    }
+    if (req.user.role !== "Organizer") {
+        res.redirect('/');
+        return;
+    }
+    res.sendFile('/usr/src/app/static/organizer.html');
+});
+
 app.get('/', (req, res) => {
     if (!req.isAuthenticated()) {
         res.redirect('/login');
+        return;
+    }
+    if (req.user.role === 'Hacker') {
+        console.log("GET / Redirecting to /hacker");
+        res.redirect('/hacker');
+        return;
+    }
+    if (req.user.role === 'Mentor') {
+        res.redirect('/mentor');
+        return;
+    }
+    if (req.user.role === 'Organizer') {
+        res.redirect('/organizer');
+        return;
     }
     res.send('You are now authenticated as ' + req.user.name);
 });
