@@ -13,7 +13,7 @@ CREATE TABLE `users`
   `username` VARCHAR(255),
   `email` VARCHAR(255),
   `password` VARCHAR(255),
-  `role` ENUM('Hacker', 'Mentor', 'Coordinator')
+  `role` ENUM('Hacker', 'Mentor', 'Organizer')
 );
 
 CREATE TABLE `tickets`
@@ -32,11 +32,11 @@ ALTER TABLE `tickets` ADD FOREIGN KEY (`hacker_id`) REFERENCES `users` (`id`);
 
 ALTER TABLE `tickets` ADD FOREIGN KEY (`mentor_id`) REFERENCES `users` (`id`);
 
--- users are jkass:asdf vtat:qwer crose:zxcv
+-- users are jkass:asdf vtati:qwer crose:zxcv
 INSERT INTO users (name, username, email, password, role) 
 VALUES("josh", "jkass", "jkass@example.com", "$2b$10$LjlSBAAWIN4WPRWwKgK9OOmaZrD87iNiD4NeuVtRYaPcznj.eyhYC", 'Hacker'),
-("vikas", "vtati", "vtat@example.com", "$2b$10$/bs0zsZ/RVYItcskIb9m0O7qjc.BFOw2fs5yPwFhiH.2NUl2ss3si", 'Mentor'),
-("chris", "crose", "crose@example.com", "$2b$10$0tCQV/l1oTRbRl5lCi5gOOsvF/XelBA1yBFvChbsOz1OKLOKA7oc6", 'Coordinator');
+("vikas", "vtati", "vtat@example.com", "$2b$10$glzKke.feNFNLAbXTB67gOKaEGRQG5mXwKVEiRVb3JCH8tHqT/7T2", 'Mentor'),
+("chris", "crose", "crose@example.com", "$2b$10$0tCQV/l1oTRbRl5lCi5gOOsvF/XelBA1yBFvChbsOz1OKLOKA7oc6", 'Organizer');
 
 INSERT INTO tickets (hacker_id, submit_time, status, location, tags, message) 
 VALUES((SELECT id FROM users WHERE email="jkass@example.com"), "2019-04-11 10:15:34", "Open", "880b", '', "Please Help ASAP");
