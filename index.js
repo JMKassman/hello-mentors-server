@@ -55,6 +55,27 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.static("/usr/src/app/static"));
 
+app.get('/', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.redirect('/login');
+        return;
+    }
+    if (req.user.role === 'Hacker') {
+        console.log("GET / Redirecting to /hacker");
+        res.redirect('/hacker');
+        return;
+    }
+    if (req.user.role === 'Mentor') {
+        res.redirect('/mentor');
+        return;
+    }
+    if (req.user.role === 'Organizer') {
+        res.redirect('/organizer');
+        return;
+    }
+    res.send('You are now authenticated as ' + req.user.name);
+});
+
 app.get('/login', (req, res) => {
     res.sendFile('/usr/src/app/static/login.html');
 });
@@ -74,10 +95,6 @@ app.get('/logout', function(req, res){
     res.redirect('/');
   });
 
-app.get('/hello', (req, res) => {
-    res.send("Hello World!")
-});
-
 app.get('/hacker', (req,res) => {
     if (!req.isAuthenticated()) {
         res.redirect('/login');
@@ -88,6 +105,30 @@ app.get('/hacker', (req,res) => {
         return;
     }
     res.sendFile('/usr/src/app/static/hacker.html');
+});
+
+app.get('/mentor', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.redirect('/login');
+        return;
+    }
+    if (req.user.role !== "Mentor" && req.user.role !== "Organizer") {
+        res.redirect('/');
+        return;
+    }
+    res.sendFile('/usr/src/app/static/mentor.html');
+});
+
+app.get('/organizer', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.redirect('/login');
+        return;
+    }
+    if (req.user.role !== "Organizer") {
+        res.redirect('/');
+        return;
+    }
+    res.sendFile('/usr/src/app/static/organizer.html');
 });
 
 /**
@@ -120,49 +161,25 @@ app.post('/api/submit-ticket', (req, res) => {
                         });
 });
 
-app.get('/mentor', (req, res) => {
+app.get('/api/get-open-tickets', (req, res) => {
     if (!req.isAuthenticated()) {
-        res.redirect('/login');
+        res.sendStatus(403);
         return;
     }
     if (req.user.role !== "Mentor" && req.user.role !== "Organizer") {
-        res.redirect('/');
+        res.sendStatus(403);
         return;
     }
-    res.sendFile('/usr/src/app/static/mentor.html');
-});
-
-app.get('/organizer', (req, res) => {
-    if (!req.isAuthenticated()) {
-        res.redirect('/login');
-        return;
-    }
-    if (req.user.role !== "Organizer") {
-        res.redirect('/');
-        return;
-    }
-    res.sendFile('/usr/src/app/static/organizer.html');
-});
-
-app.get('/', (req, res) => {
-    if (!req.isAuthenticated()) {
-        res.redirect('/login');
-        return;
-    }
-    if (req.user.role === 'Hacker') {
-        console.log("GET / Redirecting to /hacker");
-        res.redirect('/hacker');
-        return;
-    }
-    if (req.user.role === 'Mentor') {
-        res.redirect('/mentor');
-        return;
-    }
-    if (req.user.role === 'Organizer') {
-        res.redirect('/organizer');
-        return;
-    }
-    res.send('You are now authenticated as ' + req.user.name);
+    connection.query("SELECT users.name, users.email, tickets.submit_time, tickets.location, tickets.tags, tickets.message FROM tickets INNER JOIN users ON tickets.hacker_id=users.id WHERE tickets.status = 'Open'", 
+                    (err, rows) => {
+                        if (err) {
+                            res.sendStatus(500);
+                            return;
+                        }
+                        console.log(`Sending open tickets to ${req.user.name}`);
+                        console.log(rows);
+                        res.json(rows);
+                    });
 });
 
 app.listen(port, () => console.log(`App is listening on port ${port}`));
