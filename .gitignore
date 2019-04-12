@@ -89,3 +89,5 @@ mysql-volume-debug/
 
 # VSCode files
 .vscode/
+
+static

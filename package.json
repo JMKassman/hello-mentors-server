@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "debug": "nodemon --inspect=0.0.0.0:9229 index.js"
+    "debug": "node --inspect=0.0.0.0:9229 index.js"
   },
   "repository": {
     "type": "git",
@@ -19,10 +19,13 @@
   },
   "homepage": "https://github.com/JMKassman/hello-mentors-server#readme",
   "dependencies": {
+    "bcrypt": "^3.0.5",
+    "body-parser": "^1.18.3",
     "express": "^4.16.4",
-    "mysql": "^2.16.0"
-  },
-  "devDependencies": {
-    "nodemon": "^1.18.11"
+    "express-mysql-session": "^2.1.0",
+    "express-session": "^1.16.1",
+    "mysql": "^2.16.0",
+    "passport": "^0.4.0",
+    "passport-local": "^1.0.0"
   }
 }
