@@ -22,7 +22,7 @@ CREATE TABLE `tickets`
   `hacker_id` INT NOT NULL,
   `mentor_id` INT,
   `submit_time` datetime NOT NULL,
-  `status` ENUM('Open', 'Claimed', 'Complete'),
+  `status` ENUM('Open', 'Claimed', 'Closed'),
   `location` VARCHAR(255) NOT NULL,
   `tags` SET('ANDROID', 'IOS', 'JAVA', 'JAVASCRIPT'),
   `message` VARCHAR(255) NOT NULL
