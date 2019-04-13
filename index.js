@@ -256,4 +256,37 @@ app.post('/api/unclaim-ticket', (req, res) => {
     });
 });
 
+/**
+ * Closes the requesting user's claimed ticket if it is claimed by them
+ * {
+ *  id: integer
+ * }
+ */
+app.post('/api/close-ticket', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    if (req.user.role !== "Mentor" && req.user.role !== "Organizer") {
+        res.sendStatus(403);
+        return;
+    }
+    if(req.body.id == undefined) {
+        res.sendStatus(400);
+        return;
+    }
+    connection.query("UPDATE tickets SET status = 'Closed' WHERE mentor_id = ? AND id = ? AND status = 'Claimed'", [req.user.id, req.body.id], (err, result) => {
+        if (err) {
+            res.sendStatus(500);
+            return;
+        }
+        if (result.affectedRows === 1) {
+            res.json({unclaimed: true});
+        }
+        else {
+            res.json({unclaimed: false});
+        }
+    });
+});
+
 app.listen(port, () => console.log(`App is listening on port ${port}`));
