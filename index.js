@@ -190,6 +190,27 @@ app.get('/api/get-open-tickets', (req, res) => {
                     });
 });
 
+app.get('/api/get-all-tickets', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    if (req.user.role !== "Organizer") {
+        res.sendStatus(403);
+        return;
+    }
+    connection.query("SELECT tickets.id, users.name, users.email, tickets.submit_time, tickets.location, tickets.tags, tickets.message FROM tickets INNER JOIN users ON tickets.hacker_id=users.id ORDER BY tickets.submit_time ASC", 
+                    (err, rows) => {
+                        if (err) {
+                            res.sendStatus(500);
+                            return;
+                        }
+                        console.log(`Sending all tickets to ${req.user.name}`);
+                        console.log(rows);
+                        res.json(rows);
+                    });
+});
+
 /**
  * Assigns the requesting user to the ticket if it is unclaimed
  * {
