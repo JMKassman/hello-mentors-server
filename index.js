@@ -230,6 +230,27 @@ app.get('/api/get-mentor-tickets', (req, res) => {
                     });
 });
 
+app.get('/api/get-hacker-tickets', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    if (req.user.role !== "Hacker") {
+        res.sendStatus(403);
+        return;
+    }
+    connection.query("SELECT tickets.id, tickets.status, users.name, tickets.submit_time, tickets.location, tickets.tags, tickets.message FROM tickets LEFT JOIN users ON tickets.mentor_id=users.id  WHERE tickets.hacker_id = ? AND (tickets.status = 'Open' OR tickets.status = 'Claimed') ORDER BY tickets.submit_time DESC",
+                    [req.user.id],
+                    (err, rows) => {
+                        if (err) {
+                            res.sendStatus(500);
+                            return;
+                        }
+                        console.log(`Sending hackers open/claimed tickets to ${req.user.name}`);
+                        res.json(rows);
+                    });
+});
+
 /**
  * Assigns the requesting user to the ticket if it is unclaimed
  * {
