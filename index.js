@@ -199,7 +199,7 @@ app.get('/api/get-all-tickets', (req, res) => {
         res.sendStatus(403);
         return;
     }
-    connection.query("SELECT tickets.id, users.name, users.email, tickets.submit_time, tickets.location, tickets.tags, tickets.message FROM tickets INNER JOIN users ON tickets.hacker_id=users.id ORDER BY tickets.submit_time ASC", 
+    connection.query("SELECT tickets.id, users.name, users.email, tickets.submit_time, tickets.location, tickets.tags, tickets.message, tickets.status FROM tickets INNER JOIN users ON tickets.hacker_id=users.id ORDER BY tickets.submit_time ASC", 
                     (err, rows) => {
                         if (err) {
                             res.sendStatus(500);
