@@ -148,7 +148,7 @@ app.post('/api/submit-ticket', (req, res) => {
         res.sendStatus(403);
         return;
     }
-    let time = new Date().toISOString();
+    let time = new Date();
     let timeString = `${time.getFullYear()}-${time.getMonth()+1}-${time.getDate()} ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`;
     connection.query("INSERT INTO tickets (hacker_id, submit_time, status, location, tags, message) VALUES(?, ?, 'Open', ?, ?, ?)",
                         [req.user.id, timeString, req.body.location, req.body.tags, req.body.message],
@@ -174,7 +174,7 @@ app.get('/api/get-open-tickets', (req, res) => {
         res.sendStatus(403);
         return;
     }
-    connection.query("SELECT users.name, users.email, tickets.submit_time, tickets.location, tickets.tags, tickets.message FROM tickets INNER JOIN users ON tickets.hacker_id=users.id WHERE tickets.status = 'Open'", 
+    connection.query("SELECT tickets.id, users.name, users.email, tickets.submit_time, tickets.location, tickets.tags, tickets.message FROM tickets INNER JOIN users ON tickets.hacker_id=users.id WHERE tickets.status = 'Open'", 
                     (err, rows) => {
                         if (err) {
                             res.sendStatus(500);
