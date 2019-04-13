@@ -185,7 +185,6 @@ app.get('/api/get-open-tickets', (req, res) => {
                             return;
                         }
                         console.log(`Sending open tickets to ${req.user.name}`);
-                        console.log(rows);
                         res.json(rows);
                     });
 });
@@ -206,7 +205,27 @@ app.get('/api/get-all-tickets', (req, res) => {
                             return;
                         }
                         console.log(`Sending all tickets to ${req.user.name}`);
-                        console.log(rows);
+                        res.json(rows);
+                    });
+});
+
+app.get('/api/get-mentor-tickets', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    if (req.user.role !== "Organizer") {
+        res.sendStatus(403);
+        return;
+    }
+    connection.query("SELECT tickets.id, users.name, users.email, tickets.submit_time, tickets.location, tickets.tags, tickets.message FROM tickets INNER JOIN users ON tickets.hacker_id=users.id WHERE tickets.mentor_id = ? AND tickets.status = 'Claimed' ORDER BY tickets.submit_time DESC",
+                    [req.user.id],
+                    (err, rows) => {
+                        if (err) {
+                            res.sendStatus(500);
+                            return;
+                        }
+                        console.log(`Sending mentor's claimed tickets to ${req.user.name}`);
                         res.json(rows);
                     });
 });
