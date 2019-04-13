@@ -148,13 +148,17 @@ app.post('/api/submit-ticket', (req, res) => {
         res.sendStatus(403);
         return;
     }
+    if (req.body.location == undefined || req.body.tags == undefined || req.body.message == undefined) {
+        res.sendStatus(400);
+        return;
+    }
     let time = new Date();
     let timeString = `${time.getFullYear()}-${time.getMonth()+1}-${time.getDate()} ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`;
     connection.query("INSERT INTO tickets (hacker_id, submit_time, status, location, tags, message) VALUES(?, ?, 'Open', ?, ?, ?)",
                         [req.user.id, timeString, req.body.location, req.body.tags, req.body.message],
                         (err, result) => {
                             if (err) {
-                                res.sendStatus(400);
+                                res.sendStatus(500);
                                 return;
                             }
                             if (result.affectedRows === 1) {
@@ -201,15 +205,15 @@ app.post('/api/claim-ticket', (req, res) => {
         res.sendStatus(403);
         return;
     }
-    console.log(req.user);
-    console.log(req.body);
+    if(req.body.id == undefined) {
+        res.sendStatus(400);
+        return;
+    }
     connection.query("UPDATE tickets SET mentor_id = ?, status = 'Claimed' WHERE mentor_id IS NULL AND id = ?", [req.user.id, req.body.id], (err, result) => {
         if (err) {
             res.sendStatus(500);
             return;
         }
-        console.log([req.user.id, req.body.id]);
-        console.log(result);
         if (result.affectedRows === 1) {
             res.json({claimed: true});
         }
@@ -219,6 +223,12 @@ app.post('/api/claim-ticket', (req, res) => {
     });
 });
 
+/**
+ * Removes the requesting user from the ticket if it is claimed by them
+ * {
+ *  id: integer
+ * }
+ */
 app.post('/api/unclaim-ticket', (req, res) => {
     if (!req.isAuthenticated()) {
         res.sendStatus(403);
@@ -226,6 +236,10 @@ app.post('/api/unclaim-ticket', (req, res) => {
     }
     if (req.user.role !== "Mentor" && req.user.role !== "Organizer") {
         res.sendStatus(403);
+        return;
+    }
+    if(req.body.id == undefined) {
+        res.sendStatus(400);
         return;
     }
     connection.query("UPDATE tickets SET mentor_id = NULL, status = 'Open' WHERE mentor_id = ? AND id = ? AND status = 'Claimed'", [req.user.id, req.body.id], (err, result) => {
