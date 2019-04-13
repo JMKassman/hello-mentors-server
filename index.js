@@ -186,4 +186,37 @@ app.get('/api/get-open-tickets', (req, res) => {
                     });
 });
 
+/**
+ * Assigns the requesting user to the ticket if it is unclaimed
+ * {
+ *  id: integer
+ * }
+ */
+app.post('/api/claim-ticket', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    if (req.user.role !== "Mentor" && req.user.role !== "Organizer") {
+        res.sendStatus(403);
+        return;
+    }
+    console.log(req.user);
+    console.log(req.body);
+    connection.query("UPDATE tickets SET mentor_id = ?, status = 'Claimed' WHERE mentor_id IS NULL AND id = ?", [req.user.id, req.body.id], (err, result) => {
+        if (err) {
+            res.sendStatus(500);
+            return;
+        }
+        console.log([req.user.id, req.body.id]);
+        console.log(result);
+        if (result.affectedRows === 1) {
+            res.json({claimed: true});
+        }
+        else {
+            res.json({claimed: false});
+        }
+    });
+});
+
 app.listen(port, () => console.log(`App is listening on port ${port}`));
