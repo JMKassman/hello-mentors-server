@@ -214,7 +214,7 @@ app.get('/api/get-mentor-tickets', (req, res) => {
         res.sendStatus(403);
         return;
     }
-    if (req.user.role !== "Organizer") {
+    if (req.user.role !== "Mentor" && req.user.role !== "Organizer") {
         res.sendStatus(403);
         return;
     }
