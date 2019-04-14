@@ -28,6 +28,17 @@ CREATE TABLE `tickets`
   `message` VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE `mentors`
+(
+  `mentor_id` INT NOT NULL,
+  `status` ENUM(`In`, `Out`) NOT NULL,
+  `start_time` datetime NULL,
+  `end_time` datetime NULL,
+  `total_time` time NULL
+)
+
 ALTER TABLE `tickets` ADD FOREIGN KEY (`hacker_id`) REFERENCES `users` (`id`);
 
 ALTER TABLE `tickets` ADD FOREIGN KEY (`mentor_id`) REFERENCES `users` (`id`);
+
+ALTER TABLE `mentors` ADD FOREIGN KEY (`mentor_id`) REFERENCES `users` (`id`);
