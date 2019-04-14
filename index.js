@@ -152,10 +152,8 @@ app.post('/api/submit-ticket', (req, res) => {
         res.sendStatus(400);
         return;
     }
-    let time = new Date();
-    let timeString = `${time.getFullYear()}-${time.getMonth()+1}-${time.getDate()} ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`;
-    connection.query("INSERT INTO tickets (hacker_id, submit_time, status, location, tags, message) VALUES(?, ?, 'Open', ?, ?, ?)",
-                        [req.user.id, timeString, req.body.location, req.body.tags, req.body.message],
+    connection.query("INSERT INTO tickets (hacker_id, submit_time, status, location, tags, message) VALUES(?, NOW(), 'Open', ?, ?, ?)",
+                        [req.user.id, req.body.location, req.body.tags, req.body.message],
                         (err, result) => {
                             if (err) {
                                 res.sendStatus(500);
