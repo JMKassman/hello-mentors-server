@@ -350,4 +350,86 @@ app.post('/api/close-ticket', (req, res) => {
     });
 });
 
+/**
+ * Checks in the mentor defined by the given email
+ * {
+ *  email: string
+ * }
+ * Returns:
+ * {
+ *  success: boolean
+ * }
+ * Reasons for failure: invalid email, already checked in
+ */
+app.post('/api/checkin-mentor', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    if (req.user.role !== "Organizer") {
+        res.sendStatus(403);
+        return;
+    }
+    if(req.body.email == undefined) {
+        res.sendStatus(400);
+        return;
+    }
+    connection.query("UPDATE mentors SET status = 'In', start_time = NOW() WHERE mentor_id = (SELECT id FROM users WHERE email = ?) AND status = 'Out'",
+                        [req.body.email],
+                        (err, result) => {
+                            if (err) {
+                                console.log(err);
+                                res.sendStatus(500);
+                                return;
+                            }
+                            if (result.affectedRows === 1) {
+                                res.json({success: true});
+                            }
+                            else {
+                                res.json({success: false});
+                            }
+                        });
+});
+
+/**
+ * Checks out the mentor defined by the given email
+ * {
+ *  email: string
+ * }
+ * Returns:
+ * {
+ *  success: boolean
+ * }
+ * Reasons for failure: invalid email, not checked in
+ */
+app.post('/api/checkout-mentor', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    if (req.user.role !== "Organizer") {
+        res.sendStatus(403);
+        return;
+    }
+    if(req.body.email == undefined) {
+        res.sendStatus(400);
+        return;
+    }
+    connection.query("UPDATE mentors SET status = 'Out', end_time = NOW(), total_time = TIMEDIFF(NOW(), start_time) WHERE mentor_id = (SELECT id FROM users WHERE email = ?) AND status = 'In'",
+                        [req.body.email],
+                        (err, result) => {
+                            if (err) {
+                                console.log(err);
+                                res.sendStatus(500);
+                                return;
+                            }
+                            if (result.affectedRows === 1) {
+                                res.json({success: true});
+                            }
+                            else {
+                                res.json({success: false});
+                            }
+                        });
+});
+
 app.listen(port, () => console.log(`App is listening on port ${port}`));
