@@ -45,4 +45,4 @@ INSERT INTO tickets (hacker_id, mentor_id, submit_time, status, location, tags, 
 VALUES((SELECT id FROM users WHERE email="jkass@example.com"), (SELECT id FROM users WHERE email="vtat@example.com"), "2019-04-11 10:05:24", "Claimed", "Lawson", 'ANDROID', "Android studio wont work");
 
 INSERT INTO tickets (hacker_id, mentor_id, submit_time, status, location, tags, message) 
-VALUES((SELECT id FROM users WHERE email="jkass@example.com"), (SELECT id FROM users WHERE email="vtat@example.com"), "2019-04-10 10:05:24", "Complete", "Lawson", 'JAVA,ANDROID', "Android studio R not resolving");
+VALUES((SELECT id FROM users WHERE email="jkass@example.com"), (SELECT id FROM users WHERE email="vtat@example.com"), "2019-04-10 10:05:24", "Closed", "Lawson", 'JAVA,ANDROID', "Android studio R not resolving");
