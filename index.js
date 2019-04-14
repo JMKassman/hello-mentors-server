@@ -430,4 +430,18 @@ app.post('/api/checkout-mentor', (req, res) => {
                         });
 });
 
+app.get('/api/get-current-mentors', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    connection.query("SELECT users.name, users.email, mentors.skills, (SELECT COUNT(status) > 0 FROM tickets WHERE mentor_id = 2 AND status LIKE 'Claimed') AS status, mentors.start_time, TIMEDIFF(NOW(), mentors.start_time) AS elapsed_time FROM mentors INNER JOIN users ON mentors.mentor_id=users.id WHERE mentors.status = 'In'", (err, rows) => {
+        if (err) {
+            res.sendStatus(500);
+            return;
+        }
+        res.json(rows);
+    });
+});
+
 app.listen(port, () => console.log(`App is listening on port ${port}`));

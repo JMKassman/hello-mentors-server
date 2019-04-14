@@ -31,6 +31,7 @@ CREATE TABLE `tickets`
 CREATE TABLE `mentors`
 (
   `mentor_id` INT NOT NULL,
+  `skills` VARCHAR(255) NOT NULL,
   `status` ENUM('In', 'Out'),
   `start_time` datetime NULL,
   `end_time` datetime NULL,
