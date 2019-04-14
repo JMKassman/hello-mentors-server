@@ -31,11 +31,11 @@ CREATE TABLE `tickets`
 CREATE TABLE `mentors`
 (
   `mentor_id` INT NOT NULL,
-  `status` ENUM(`In`, `Out`) NOT NULL,
+  `status` ENUM('In', 'Out'),
   `start_time` datetime NULL,
   `end_time` datetime NULL,
   `total_time` time NULL
-)
+);
 
 ALTER TABLE `tickets` ADD FOREIGN KEY (`hacker_id`) REFERENCES `users` (`id`);
 
