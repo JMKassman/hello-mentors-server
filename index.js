@@ -6,8 +6,9 @@ const session = require('express-session');
 const bodyParser = require('body-parser');
 const MySQLStore = require('express-mysql-session')(session);
 const bcrypt = require('bcrypt');
-const uuid = require('uuid/v4');
 const https = require('https');
+const base64url = require('base64url');
+const crypto = require('crypto');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -548,9 +549,10 @@ app.post('/api/request-password-reset', (req, res) => {
         res.sendStatus(503);
         return;
     }
-    let token = uuid();
+    let token = base64url(crypto.randomBytes(128));
+    let hashed_token = crypto.createHash('sha256').update(token).digest('hex');
     connection.query("UPDATE users SET password_reset_token = ?, password_reset_token_expiration = DATE_ADD(NOW(), INTERVAL 1 DAY) WHERE email = ?",
-                        [token, req.body.email],
+                        [hashed_token, req.body.email],
                         (err, result) => {
                             if (err) {
                                 res.sendStatus(500);
