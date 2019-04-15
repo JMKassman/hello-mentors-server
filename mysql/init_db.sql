@@ -12,7 +12,9 @@ CREATE TABLE `users`
   `name` VARCHAR(255),
   `email` VARCHAR(255),
   `password` VARCHAR(255),
-  `role` ENUM('Hacker', 'Mentor', 'Coordinator')
+  `role` ENUM('Hacker', 'Mentor', 'Coordinator'),
+  `password_reset_token` VARCHAR(255) NULL,
+  `password_rest_token_expiration` datetime NULL
 );
 
 CREATE TABLE `tickets`
