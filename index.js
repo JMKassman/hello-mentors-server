@@ -101,6 +101,14 @@ app.get('/logout', function(req, res){
     res.redirect('/');
   });
 
+app.get('/forgot-password', (req, res) => {
+    if (req.isAuthenticated()) {
+        res.redirect('/');
+        return;
+    }
+    res.sendFile('/usr/src/app/static/forgot-password.html');
+});
+
 app.get('/hacker', (req,res) => {
     if (!req.isAuthenticated()) {
         res.redirect('/login');
