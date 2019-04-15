@@ -6,6 +6,8 @@ const session = require('express-session');
 const bodyParser = require('body-parser');
 const MySQLStore = require('express-mysql-session')(session);
 const bcrypt = require('bcrypt');
+const uuid = require('uuid/v4');
+const https = require('https');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -452,6 +454,71 @@ app.get('/api/get-current-mentors', (req, res) => {
         }
         res.json(rows);
     });
+});
+
+const sendgrid_options = {
+    "method": "POST",
+    "hostname": "api.sendgrid.com",
+    "port": null,
+    "path": "/v3/mail/send",
+    "headers": {
+      "authorization": "Bearer " + process.env.SENDGRID_API_KEY,
+      "content-type": "application/json"
+    }
+}
+
+app.post('/api/request-password-reset', (req, res) => {
+    if (req.body.email == undefined) {
+        res.sendStatus(400);
+        return;
+    }
+    let token = uuid();
+    connection.query("UPDATE users SET password_reset_token = ?, password_reset_token_expiration = DATE_ADD(NOW(), INTERVAL 1 DAY) WHERE email = ?",
+                        [token, req.body.email],
+                        (err, result) => {
+                            if (err) {
+                                res.sendStatus(500);
+                                return;
+                            }
+                            if (result.affectedRows === 1) {
+                                //valid email
+                                res.sendStatus(200);
+                                //get name of user
+                                connection.query("SELECT name FROM users WHERE email = ?", [req.body.email], (err, rows) => {
+                                    if (err) {
+                                        console.log("Failed to get name for password reset. No email sent");
+                                        return;
+                                    }
+                                    //send email
+                                    let sendgrid_req = https.request(sendgrid_options, function (sendgrid_res) {
+                                        var chunks = [];
+                                    
+                                        sendgrid_res.on("data", function (chunk) {
+                                          chunks.push(chunk);
+                                        });
+                                    
+                                        sendgrid_res.on("end", function () {
+                                          var body = Buffer.concat(chunks);
+                                          console.log("Response from sendgrid:");
+                                          console.log(body);
+                                        });
+                                      });
+
+                                    let reset_link = "https://hellomentors.jmkassman.com/reset-password?token=" + token;
+                                    sendgrid_req.write(JSON.stringify({ personalizations: 
+                                       [ { to: [ { email: req.body.email, name: rows[0].name } ],
+                                           dynamic_template_data: 
+                                            { "reset_link": reset_link} } ],
+                                      from: { email: process.env.SENDGRID_FROM_ADDRESS, name: 'The Hello Mentors Team' },
+                                      template_id: 'd-78494412b4964869a436b164cb32214a' }));
+                                    sendgrid_req.end();
+                                });
+                            }
+                            else {
+                                //invalid email
+                                res.sendStatus(200);
+                            }
+                        });
 });
 
 app.listen(port, () => console.log(`App is listening on port ${port}`));

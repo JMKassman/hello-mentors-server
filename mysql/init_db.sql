@@ -14,7 +14,7 @@ CREATE TABLE `users`
   `password` VARCHAR(255),
   `role` ENUM('Hacker', 'Mentor', 'Coordinator'),
   `password_reset_token` VARCHAR(255) NULL,
-  `password_rest_token_expiration` datetime NULL
+  `password_reset_token_expiration` datetime NULL
 );
 
 CREATE TABLE `tickets`
