@@ -13,12 +13,12 @@ const crypto = require('crypto');
 const app = express();
 const port = process.env.PORT || 3000;
 
-const connection = mysql.createConnection({
+const connection_info = {
     host: process.env.MYSQL_HOST,
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DATABASE
-});
+};
 
 const sessionStore = new MySQLStore({
     host: process.env.MYSQL_HOST,
@@ -28,7 +28,31 @@ const sessionStore = new MySQLStore({
     database: "sessions"
 });
 
-connection.connect();
+
+
+//taken from https://stackoverflow.com/questions/37385833/node-js-mysql-database-disconnect
+var connection;
+var db_connected = false;
+function handleDisconnect() {
+    connection = mysql.createConnection(connection_info);  // Recreate the connection, since the old one cannot be reused.
+    connection.connect( function onConnect(err) {   // The server is either down
+        if (err) {                                  // or restarting (takes a while sometimes).
+            console.log('error when connecting to db:', err);
+            setTimeout(handleDisconnect, 10000);    // We introduce a delay before attempting to reconnect,
+        }                                           // to avoid a hot loop, and to allow our node script to
+    });                                             // process asynchronous requests in the meantime.
+    db_connected = true                             // If you're also serving http, display a 503 error.
+    connection.on('error', function onError(err) {
+        console.log('db error', err);
+        db_connected = false;
+        if (err.code == 'PROTOCOL_CONNECTION_LOST') {   // Connection to the MySQL server is usually
+            handleDisconnect();                         // lost due to either server restart, or a
+        } else {                                        // connnection idle timeout (the wait_timeout
+            throw err;                                  // server variable configures this)
+        }
+    });
+}
+handleDisconnect();
 
 passport.use(new LocalStrategy((username, password, done) => {
     connection.query('SELECT * FROM users WHERE email = ?', [username], (err, rows) => {
@@ -89,6 +113,10 @@ app.get('/login', (req, res) => {
     res.sendFile('/usr/src/app/static/login.html');
 });
 app.post('/login', (req, res, next) => {
+    if (!db_connected) {
+        res.sendStatus(503);
+        return;
+    }
     passport.authenticate('local', (err, user, info) => {
         req.login(user, (err) => {
             if (err) {
@@ -165,6 +193,10 @@ app.post('/api/submit-ticket', (req, res) => {
         res.sendStatus(400);
         return;
     }
+    if (!db_connected) {
+        res.sendStatus(503);
+        return;
+    }
     connection.query("INSERT INTO tickets (hacker_id, submit_time, status, location, tags, message) VALUES(?, NOW(), 'Open', ?, ?, ?)",
                         [req.user.id, req.body.location, req.body.tags, req.body.message],
                         (err, result) => {
@@ -189,6 +221,10 @@ app.get('/api/get-open-tickets', (req, res) => {
         res.sendStatus(403);
         return;
     }
+    if (!db_connected) {
+        res.sendStatus(503);
+        return;
+    }
     connection.query("SELECT tickets.id, users.name, users.email, tickets.submit_time, tickets.location, tickets.tags, tickets.message FROM tickets INNER JOIN users ON tickets.hacker_id=users.id WHERE tickets.status = 'Open' ORDER BY tickets.submit_time ASC", 
                     (err, rows) => {
                         if (err) {
@@ -207,6 +243,10 @@ app.get('/api/get-all-tickets', (req, res) => {
     }
     if (req.user.role !== "Organizer") {
         res.sendStatus(403);
+        return;
+    }
+    if (!db_connected) {
+        res.sendStatus(503);
         return;
     }
     connection.query("SELECT tickets.id, users.name, users.email, tickets.submit_time, tickets.location, tickets.tags, tickets.message, tickets.status FROM tickets INNER JOIN users ON tickets.hacker_id=users.id ORDER BY tickets.submit_time ASC", 
@@ -229,6 +269,10 @@ app.get('/api/get-mentor-tickets', (req, res) => {
         res.sendStatus(403);
         return;
     }
+    if (!db_connected) {
+        res.sendStatus(503);
+        return;
+    }
     connection.query("SELECT tickets.id, users.name, users.email, tickets.submit_time, tickets.location, tickets.tags, tickets.message FROM tickets INNER JOIN users ON tickets.hacker_id=users.id WHERE tickets.mentor_id = ? AND tickets.status = 'Claimed' ORDER BY tickets.submit_time DESC",
                     [req.user.id],
                     (err, rows) => {
@@ -248,6 +292,10 @@ app.get('/api/get-hacker-tickets', (req, res) => {
     }
     if (req.user.role !== "Hacker") {
         res.sendStatus(403);
+        return;
+    }
+    if (!db_connected) {
+        res.sendStatus(503);
         return;
     }
     connection.query("SELECT tickets.id, tickets.status, users.name, tickets.submit_time, tickets.location, tickets.tags, tickets.message FROM tickets LEFT JOIN users ON tickets.mentor_id=users.id  WHERE tickets.hacker_id = ? AND (tickets.status = 'Open' OR tickets.status = 'Claimed') ORDER BY tickets.submit_time DESC",
@@ -279,6 +327,10 @@ app.post('/api/claim-ticket', (req, res) => {
     }
     if(req.body.id == undefined) {
         res.sendStatus(400);
+        return;
+    }
+    if (!db_connected) {
+        res.sendStatus(503);
         return;
     }
     connection.query("UPDATE tickets SET mentor_id = ?, status = 'Claimed' WHERE mentor_id IS NULL AND id = ?", [req.user.id, req.body.id], (err, result) => {
@@ -314,6 +366,10 @@ app.post('/api/unclaim-ticket', (req, res) => {
         res.sendStatus(400);
         return;
     }
+    if (!db_connected) {
+        res.sendStatus(503);
+        return;
+    }
     connection.query("UPDATE tickets SET mentor_id = NULL, status = 'Open' WHERE mentor_id = ? AND id = ? AND status = 'Claimed'", [req.user.id, req.body.id], (err, result) => {
         if (err) {
             res.sendStatus(500);
@@ -345,6 +401,10 @@ app.post('/api/close-ticket', (req, res) => {
     }
     if(req.body.id == undefined) {
         res.sendStatus(400);
+        return;
+    }
+    if (!db_connected) {
+        res.sendStatus(503);
         return;
     }
     connection.query("UPDATE tickets SET status = 'Closed' WHERE mentor_id = ? AND id = ? AND status = 'Claimed'", [req.user.id, req.body.id], (err, result) => {
@@ -383,6 +443,10 @@ app.post('/api/checkin-mentor', (req, res) => {
     }
     if(req.body.email == undefined) {
         res.sendStatus(400);
+        return;
+    }
+    if (!db_connected) {
+        res.sendStatus(503);
         return;
     }
     connection.query("UPDATE mentors SET status = 'In', start_time = NOW() WHERE mentor_id = (SELECT id FROM users WHERE email = ?) AND status = 'Out'",
@@ -426,6 +490,10 @@ app.post('/api/checkout-mentor', (req, res) => {
         res.sendStatus(400);
         return;
     }
+    if (!db_connected) {
+        res.sendStatus(503);
+        return;
+    }
     connection.query("UPDATE mentors SET status = 'Out', end_time = NOW(), total_time = TIMEDIFF(NOW(), start_time) WHERE mentor_id = (SELECT id FROM users WHERE email = ?) AND status = 'In'",
                         [req.body.email],
                         (err, result) => {
@@ -446,6 +514,10 @@ app.post('/api/checkout-mentor', (req, res) => {
 app.get('/api/get-current-mentors', (req, res) => {
     if (!req.isAuthenticated()) {
         res.sendStatus(403);
+        return;
+    }
+    if (!db_connected) {
+        res.sendStatus(503);
         return;
     }
     connection.query("SELECT users.name, users.email, mentors.skills, (SELECT COUNT(status) > 0 FROM tickets WHERE mentor_id = 2 AND status LIKE 'Claimed') AS status, mentors.start_time, TIMEDIFF(NOW(), mentors.start_time) AS elapsed_time FROM mentors INNER JOIN users ON mentors.mentor_id=users.id WHERE mentors.status = 'In'", (err, rows) => {
@@ -471,6 +543,10 @@ const sendgrid_options = {
 app.post('/api/request-password-reset', (req, res) => {
     if (req.body.email == undefined) {
         res.sendStatus(400);
+        return;
+    }
+    if (!db_connected) {
+        res.sendStatus(503);
         return;
     }
     let token = base64url(crypto.randomBytes(128));
