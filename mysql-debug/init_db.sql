@@ -10,7 +10,6 @@ CREATE TABLE `users`
 (
   `id` INT PRIMARY KEY AUTO_INCREMENT,
   `name` VARCHAR(255),
-  `username` VARCHAR(255),
   `email` VARCHAR(255),
   `password` VARCHAR(255),
   `role` ENUM('Hacker', 'Mentor', 'Organizer')
@@ -44,11 +43,11 @@ ALTER TABLE `tickets` ADD FOREIGN KEY (`mentor_id`) REFERENCES `users` (`id`);
 
 ALTER TABLE `mentors` ADD FOREIGN KEY (`mentor_id`) REFERENCES `users` (`id`);
 
--- users are jkass:asdf vtati:qwer crose:zxcv
-INSERT INTO users (name, username, email, password, role) 
-VALUES("josh", "jkass", "jkass@example.com", "$2b$10$LjlSBAAWIN4WPRWwKgK9OOmaZrD87iNiD4NeuVtRYaPcznj.eyhYC", 'Hacker'),
-("vikas", "vtati", "vtat@example.com", "$2b$10$glzKke.feNFNLAbXTB67gOKaEGRQG5mXwKVEiRVb3JCH8tHqT/7T2", 'Mentor'),
-("chris", "crose", "crose@example.com", "$2b$10$0tCQV/l1oTRbRl5lCi5gOOsvF/XelBA1yBFvChbsOz1OKLOKA7oc6", 'Organizer');
+-- users are jkassman@purdue.edu:asdf vtatinen@purdue.edu:qwer rosenblc@purdue.edu:zxcv
+INSERT INTO users (name, email, password, role) 
+VALUES("josh", "jkassman@purdue.edu", "$2b$10$LjlSBAAWIN4WPRWwKgK9OOmaZrD87iNiD4NeuVtRYaPcznj.eyhYC", 'Hacker'),
+("vikas", "vtatinen@purdue.edu", "$2b$10$glzKke.feNFNLAbXTB67gOKaEGRQG5mXwKVEiRVb3JCH8tHqT/7T2", 'Mentor'),
+("chris", "rosenblc@purdue.edu", "$2b$10$0tCQV/l1oTRbRl5lCi5gOOsvF/XelBA1yBFvChbsOz1OKLOKA7oc6", 'Organizer');
 
 INSERT INTO mentors (mentor_id, skills, status)
 VALUES((SELECT id FROM users WHERE email="vtat@example.com"), 'lol no', 'OUT');
