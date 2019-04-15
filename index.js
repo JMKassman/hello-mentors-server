@@ -28,10 +28,12 @@ const sessionStore = new MySQLStore({
 connection.connect();
 
 passport.use(new LocalStrategy((username, password, done) => {
-    connection.query('SELECT * FROM users WHERE username = ?', [username], (err, rows) => {
+    connection.query('SELECT * FROM users WHERE email = ?', [username], (err, rows) => {
         if (err) return done(err);
         if (rows.length !== 1) return done(null, false);
+        if (rows[0].password == NULL) return done(null, false);
         bcrypt.compare(password, rows[0].password, (err, same) => {
+            if (err) return done(null, false);
             return same ? done(null, rows[0]) : done(null, false);
         });
     });
