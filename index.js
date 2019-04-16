@@ -38,10 +38,14 @@ function handleDisconnect() {
     connection.connect( function onConnect(err) {   // The server is either down
         if (err) {                                  // or restarting (takes a while sometimes).
             console.log('error when connecting to db:', err);
+            db_connected = false;
             setTimeout(handleDisconnect, 10000);    // We introduce a delay before attempting to reconnect,
+        }
+        else {
+            db_connected = true;
         }                                           // to avoid a hot loop, and to allow our node script to
     });                                             // process asynchronous requests in the meantime.
-    db_connected = true                             // If you're also serving http, display a 503 error.
+                                                    // If you're also serving http, display a 503 error.
     connection.on('error', function onError(err) {
         console.log('db error', err);
         db_connected = false;
@@ -138,6 +142,103 @@ app.get('/forgot-password', (req, res) => {
         return;
     }
     res.sendFile('/usr/src/app/static/forgot-password.html');
+});
+
+app.get('/reset-password', (req, res) => {
+    if (!db_connected) {
+        res.sendStatus(503);
+        return;
+    }
+    if (req.query.token == undefined) {
+        // send bad token page
+        res.sendStatus(400);
+        return;
+    }
+    let hashed_token = crypto.createHash('sha256').update(req.query.token).digest('hex');
+    connection.query("SELECT * FROM users WHERE password_reset_token = ? AND password_reset_token_expiration > NOW()", 
+        [hashed_token], 
+        (err, rows) => {
+            if (err) {
+                res.sendStatus(500);
+                return;
+            }
+            if (rows.length == 1) {
+                res.redirect(`/change-password?token=${req.query.token}`);
+                return;
+            }
+            if (rows.length > 1) {
+                // This should never happen, invalidate all matching tokens
+                connection.query("UPDATE users SET password_reset_token = NULL, password_reset_token_expiration = NULL WHERE password_reset_token = ?", [hashed_token]);
+                //send error page
+                res.sendStatus(400);
+                return;
+            }
+            if (rows.length == 0) {
+                //update db in case the token exists but is expired
+                connection.query("UPDATE users SET password_reset_token = NULL, password_reset_token_expiration = NULL WHERE password_reset_token = ?", [hashed_token]);
+                //send error page
+                res.sendStatus(400);
+                return;
+            }
+    });
+});
+
+app.get('/change-password', (req, res) => {
+    if (!db_connected) {
+        res.sendStatus(503);
+        return;
+    }
+    if (req.query.token == undefined) {
+        // send bad token page
+        res.sendStatus(400);
+        return;
+    }
+    res.sendFile('/usr/src/app/static/reset-password.html');
+});
+app.post('/change-password', (req, res) => {
+    if (!db_connected) {
+        res.sendStatus(503);
+        return;
+    }
+    if (req.query.token == undefined) {
+        // send bad token page
+        console.log("undefined token");
+        res.sendStatus(400);
+        return;
+    }
+    if (req.body.password == undefined) {
+        //bad request
+        console.log("undefined password");
+        res.sendStatus(400);
+    }
+    bcrypt.hash(req.body.password, 10, (err, encrypted) => {
+        if (err) {
+            console.log("bcrypt failed");
+            res.sendStatus(500);
+            return;
+        }
+        if (!db_connected) {
+            res.sendStatus(503);
+            return;
+        }
+        let hashed_token = crypto.createHash('sha256').update(req.query.token).digest('hex');
+        connection.query("UPDATE users SET password = ?, password_reset_token = NULL, password_reset_token_expiration = NULL WHERE password_reset_token = ? AND password_reset_token_expiration > NOW()", 
+            [encrypted, hashed_token], 
+            (err, result) => {
+                if (err) {
+                    res.sendStatus(500);
+                    return;
+                }
+                if (result.affectedRows === 0) {
+                    //send invalid token page
+                    console.log("db query failed to update password")
+                    res.sendStatus(400);
+                    return;
+                }
+                //send file saying that password was changed successfully and link to the login page
+                res.redirect('/login');
+            });
+    });
 });
 
 app.get('/hacker', (req,res) => {
