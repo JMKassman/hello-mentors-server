@@ -709,10 +709,6 @@ app.get('/add-hacker', (req, res) => {
         res.sendStatus(403);
         return;
     }
-    if(req.body.email == undefined) {
-        res.sendStatus(400);
-        return;
-    }
     if (!db_connected) {
         res.sendStatus(503);
         return;
