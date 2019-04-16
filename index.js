@@ -700,4 +700,132 @@ app.post('/api/request-password-reset', (req, res) => {
                         });
 });
 
+app.get('/add-hacker', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    if (req.user.role !== "Organizer") {
+        res.sendStatus(403);
+        return;
+    }
+    if(req.body.email == undefined) {
+        res.sendStatus(400);
+        return;
+    }
+    if (!db_connected) {
+        res.sendStatus(503);
+        return;
+    }
+    res.sendFile('/usr/src/app/static/add-hacker.html');
+});
+
+app.get('/add-mentor', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    if (req.user.role !== "Organizer") {
+        res.sendStatus(403);
+        return;
+    }
+    if (!db_connected) {
+        res.sendStatus(503);
+        return;
+    }
+    res.sendFile('/usr/src/app/static/add-mentor.html');
+});
+
+/**
+ * Adds a hacker into the database with no password
+ * {
+ *  name: string
+ *  email: unique string
+ * }
+ * 
+ * Returns:
+ *  - 403 if not authorized to perform action
+ *  - 400 if name or email is not defined
+ *  - 503 if database is disconnected
+ *  - 400 with body {error: "Email already in use"} if Email is already in use
+ *  - 500 for any other database errors
+ *  - 200 if account is created successfully
+ */
+app.post('/api/add-hacker', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    if (req.user.role !== "Organizer") {
+        res.sendStatus(403);
+        return;
+    }
+    if (req.body.name == undefined || req.body.email == undefined) {
+        res.sendStatus(400);
+    }
+    if (!db_connected) {
+        res.sendStatus(503);
+        return;
+    }
+    connection.query("INSERT INTO users (name, email, role) VALUES(?, ?, 'HACKER')", [req.body.name, req.body.email], (err, result) => {
+        if ( err && err.errno === 1062) {
+            //email already in use
+            res.status(400).json({error: "Email already in use"});
+            return;
+        }
+        if (err) {
+            console.log(err);
+            res.sendStatus(500);
+            return;
+        }
+        console.log(`Created hacker account for ${req.body.email}`);
+        res.sendStatus(200);
+    });
+});
+
+/**
+ * Adds a mentor into the database with no password and the given tags (skills)
+ * {
+ *  name: string
+ *  email: unique string
+ *  tags: string
+ * }
+ * 
+ * Returns:
+ *  - 403 if not authorized to perform action
+ *  - 400 if name or email is not defined
+ *  - 503 if database is disconnected
+ *  - 400 with body {error: "Email already in use"} if Email is already in use
+ *  - 500 for any other database errors
+ *  - 200 if account is created successfully
+ */
+app.post('/api/add-mentor', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.sendStatus(403);
+        return;
+    }
+    if (req.user.role !== "Organizer") {
+        res.sendStatus(403);
+        return;
+    }
+    if (!db_connected) {
+        res.sendStatus(503);
+        return;
+    }
+    connection.query('CALL insert_mentor(?, ?, ?)', [req.body.name, req.body.email, req.body.tags], (err, result) => {
+        if ( err && err.errno === 1062) {
+            //email already in use
+            res.status(400).json({error: "Email already in use"});
+            return;
+        }
+        if (err) {
+            console.log(err);
+            res.sendStatus(500);
+            return;
+        }
+        console.log(`Created mentor account for ${req.body.email}`);
+        res.sendStatus(200);
+    });
+});
+
 app.listen(port, () => console.log(`App is listening on port ${port}`));

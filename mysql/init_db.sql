@@ -11,6 +11,7 @@ CREATE TABLE `users`
   `id` INT PRIMARY KEY AUTO_INCREMENT,
   `name` VARCHAR(255),
   `email` VARCHAR(255),
+  UNIQUE KEY unique_email(email),
   `password` VARCHAR(255),
   `role` ENUM('Hacker', 'Mentor', 'Coordinator'),
   `password_reset_token` VARCHAR(255) NULL,
@@ -44,3 +45,11 @@ ALTER TABLE `tickets` ADD FOREIGN KEY (`hacker_id`) REFERENCES `users` (`id`);
 ALTER TABLE `tickets` ADD FOREIGN KEY (`mentor_id`) REFERENCES `users` (`id`);
 
 ALTER TABLE `mentors` ADD FOREIGN KEY (`mentor_id`) REFERENCES `users` (`id`);
+
+DELIMITER //
+CREATE PROCEDURE insert_mentor (IN mentor_name VARCHAR(255), IN mentor_email VARCHAR(255), IN mentor_skills VARCHAR(255))
+BEGIN
+INSERT INTO users (name, email, role) VALUES(mentor_name, mentor_email, 'MENTOR');
+INSERT INTO mentors (mentor_id, skills, status) VALUES((SELECT id FROM users WHERE email = mentor_email), mentor_skills, 'Out');
+END//
+DELIMITER ;
