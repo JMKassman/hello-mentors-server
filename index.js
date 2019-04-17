@@ -61,11 +61,11 @@ handleDisconnect();
 passport.use(new LocalStrategy((username, password, done) => {
     connection.query('SELECT * FROM users WHERE email = ?', [username], (err, rows) => {
         if (err) return done(err);
-        if (rows.length !== 1) return done(null, false);
-        if (rows[0].password == null) return done(null, false);
+        if (rows.length !== 1) return done(null, false, {user: username});
+        if (rows[0].password == null) return done(null, false, {user: username});
         bcrypt.compare(password, rows[0].password, (err, same) => {
-            if (err) return done(null, false);
-            return same ? done(null, rows[0]) : done(null, false);
+            if (err) return done(null, false, {user: username});
+            return same ? done(null, rows[0], {user: username}) : done(null, false, {user: username});
         });
     });
 }));
