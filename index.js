@@ -61,11 +61,11 @@ handleDisconnect();
 passport.use(new LocalStrategy((username, password, done) => {
     connection.query('SELECT * FROM users WHERE email = ?', [username], (err, rows) => {
         if (err) return done(err);
-        if (rows.length !== 1) return done(null, false);
-        if (rows[0].password == null) return done(null, false);
+        if (rows.length !== 1) return done(null, false, {user: username});
+        if (rows[0].password == null) return done(null, false, {user: username});
         bcrypt.compare(password, rows[0].password, (err, same) => {
-            if (err) return done(null, false);
-            return same ? done(null, rows[0]) : done(null, false);
+            if (err) return done(null, false, {user: username});
+            return same ? done(null, rows[0], {user: username}) : done(null, false, {user: username});
         });
     });
 }));
@@ -151,7 +151,7 @@ app.get('/reset-password', (req, res) => {
     }
     if (req.query.token == undefined) {
         // send bad token page
-        res.sendStatus(400);
+        res.redirect('/invalid-token');
         return;
     }
     let hashed_token = crypto.createHash('sha256').update(req.query.token).digest('hex');
@@ -170,14 +170,14 @@ app.get('/reset-password', (req, res) => {
                 // This should never happen, invalidate all matching tokens
                 connection.query("UPDATE users SET password_reset_token = NULL, password_reset_token_expiration = NULL WHERE password_reset_token = ?", [hashed_token]);
                 //send error page
-                res.sendStatus(400);
+                res.redirect('/invalid-token');
                 return;
             }
             if (rows.length == 0) {
                 //update db in case the token exists but is expired
                 connection.query("UPDATE users SET password_reset_token = NULL, password_reset_token_expiration = NULL WHERE password_reset_token = ?", [hashed_token]);
                 //send error page
-                res.sendStatus(400);
+                res.redirect('/invalid-token');
                 return;
             }
     });
@@ -236,9 +236,17 @@ app.post('/change-password', (req, res) => {
                     return;
                 }
                 //send file saying that password was changed successfully and link to the login page
-                res.redirect('/login');
+                res.sendStatus(200);
             });
     });
+});
+
+app.get('/invalid-token', (req, res) => {
+    res.sendFile('/usr/src/app/static/invalid-token.html');
+});
+
+app.get('/password-change-success', (req, res) => {
+    res.sendFile('/usr/src/app/static/password-change-success.html');
 });
 
 app.get('/hacker', (req,res) => {
