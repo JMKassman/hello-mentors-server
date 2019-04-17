@@ -9,9 +9,19 @@ const bcrypt = require('bcrypt');
 const https = require('https');
 const base64url = require('base64url');
 const crypto = require('crypto');
+const winston = require('winston');
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+    transports: [
+        new winston.transports.Console(),
+        new winston.transports.File({filename: "/logs/error.log", level: "error"})
+    ]
+});
 
 const connection_info = {
     host: process.env.MYSQL_HOST,
@@ -28,8 +38,6 @@ const sessionStore = new MySQLStore({
     database: "sessions"
 });
 
-
-
 //taken from https://stackoverflow.com/questions/37385833/node-js-mysql-database-disconnect
 var connection;
 var db_connected = false;
@@ -37,7 +45,7 @@ function handleDisconnect() {
     connection = mysql.createConnection(connection_info);  // Recreate the connection, since the old one cannot be reused.
     connection.connect( function onConnect(err) {   // The server is either down
         if (err) {                                  // or restarting (takes a while sometimes).
-            console.log('error when connecting to db:', err);
+            logger.error(`Error connecting to DB: ${err.code}`);
             db_connected = false;
             setTimeout(handleDisconnect, 10000);    // We introduce a delay before attempting to reconnect,
         }
@@ -47,7 +55,7 @@ function handleDisconnect() {
     });                                             // process asynchronous requests in the meantime.
                                                     // If you're also serving http, display a 503 error.
     connection.on('error', function onError(err) {
-        console.log('db error', err);
+        logger.error(`Error connecting to DB: ${err.code}`);
         db_connected = false;
         if (err.code == 'PROTOCOL_CONNECTION_LOST') {   // Connection to the MySQL server is usually
             handleDisconnect();                         // lost due to either server restart, or a
@@ -94,7 +102,6 @@ app.get('/', (req, res) => {
         return;
     }
     if (req.user.role === 'Hacker') {
-        console.log("GET / Redirecting to /hacker");
         res.redirect('/hacker');
         return;
     }
@@ -106,7 +113,6 @@ app.get('/', (req, res) => {
         res.redirect('/organizer');
         return;
     }
-    res.send('You are now authenticated as ' + req.user.name);
 });
 
 app.get('/login', (req, res) => {
@@ -118,20 +124,24 @@ app.get('/login', (req, res) => {
 });
 app.post('/login', (req, res, next) => {
     if (!db_connected) {
+        logger.error("/login: Database disconnected, Cannot POST");
         res.sendStatus(503);
         return;
     }
     passport.authenticate('local', (err, user, info) => {
         req.login(user, (err) => {
             if (err) {
+                logger.info(`/login: Invalid password for user ${info.user}`);
                 return res.redirect('/login?err');
             }
+            logger.info(`/login: ${info.user} has logged in from ${req.connection.remoteAddress}`);
             return res.redirect('/');
         });
     })(req, res, next);
 });
 
-app.get('/logout', function(req, res){
+app.get('/logout', function(req, res) {
+    logger.info(`/logout: ${req.user.email} has logged out`);
     req.logout();
     res.redirect('/');
   });
@@ -146,10 +156,12 @@ app.get('/forgot-password', (req, res) => {
 
 app.get('/reset-password', (req, res) => {
     if (!db_connected) {
+        logger.error("/reset-password: Database disconnected, Cannot GET");
         res.sendStatus(503);
         return;
     }
     if (req.query.token == undefined) {
+        logger.info("/reset-password: Invalid token");
         // send bad token page
         res.sendStatus(400);
         return;
@@ -159,6 +171,7 @@ app.get('/reset-password', (req, res) => {
         [hashed_token], 
         (err, rows) => {
             if (err) {
+                logger.error(`/reset-password: Database error: ${err.code}`);
                 res.sendStatus(500);
                 return;
             }
@@ -168,6 +181,7 @@ app.get('/reset-password', (req, res) => {
             }
             if (rows.length > 1) {
                 // This should never happen, invalidate all matching tokens
+                logger.error("/reset-password: TOKEN HASH COLLISION");
                 connection.query("UPDATE users SET password_reset_token = NULL, password_reset_token_expiration = NULL WHERE password_reset_token = ?", [hashed_token]);
                 //send error page
                 res.sendStatus(400);
@@ -175,6 +189,7 @@ app.get('/reset-password', (req, res) => {
             }
             if (rows.length == 0) {
                 //update db in case the token exists but is expired
+                logger.info("/reset-password: Invalid token");
                 connection.query("UPDATE users SET password_reset_token = NULL, password_reset_token_expiration = NULL WHERE password_reset_token = ?", [hashed_token]);
                 //send error page
                 res.sendStatus(400);
@@ -185,10 +200,12 @@ app.get('/reset-password', (req, res) => {
 
 app.get('/change-password', (req, res) => {
     if (!db_connected) {
+        logger.error("/change-password: Database disconnected, Cannot GET");
         res.sendStatus(503);
         return;
     }
     if (req.query.token == undefined) {
+        logger.info("/change-password: Invalid token");
         // send bad token page
         res.sendStatus(400);
         return;
@@ -197,27 +214,29 @@ app.get('/change-password', (req, res) => {
 });
 app.post('/change-password', (req, res) => {
     if (!db_connected) {
+        logger.error("/change-password: Database disconnected, Cannot POST");
         res.sendStatus(503);
         return;
     }
     if (req.query.token == undefined) {
         // send bad token page
-        console.log("undefined token");
+        logger.info("/change-password: Invalid token");
         res.sendStatus(400);
         return;
     }
     if (req.body.password == undefined) {
         //bad request
-        console.log("undefined password");
+        logger.info("/change-password: Invalid password");
         res.sendStatus(400);
     }
     bcrypt.hash(req.body.password, 10, (err, encrypted) => {
         if (err) {
-            console.log("bcrypt failed");
+            logger.error(`/change-password: bcrypt failed to hash: ${err.name}`);
             res.sendStatus(500);
             return;
         }
         if (!db_connected) {
+            logger.error("/change-password: Database disconnected, Cannot POST");
             res.sendStatus(503);
             return;
         }
@@ -226,12 +245,13 @@ app.post('/change-password', (req, res) => {
             [encrypted, hashed_token], 
             (err, result) => {
                 if (err) {
+                    logger.error(`/change-password: Database error: ${err.code}`);
                     res.sendStatus(500);
                     return;
                 }
                 if (result.affectedRows === 0) {
                     //send invalid token page
-                    console.log("db query failed to update password")
+                    logger.error(`/reset-password: Failed to update password`);
                     res.sendStatus(400);
                     return;
                 }
@@ -291,10 +311,12 @@ app.post('/api/submit-ticket', (req, res) => {
         return;
     }
     if (req.body.location == undefined || req.body.tags == undefined || req.body.message == undefined) {
+        logger.info('/api/submit-ticket: Required information undefined');
         res.sendStatus(400);
         return;
     }
     if (!db_connected) {
+        logger.error("/api/submit-ticket: Database disconnected, Cannot POST");
         res.sendStatus(503);
         return;
     }
@@ -302,10 +324,12 @@ app.post('/api/submit-ticket', (req, res) => {
                         [req.user.id, req.body.location, req.body.tags, req.body.message],
                         (err, result) => {
                             if (err) {
+                                logger.error(`/change-password: Database error: ${err.code}`);
                                 res.sendStatus(500);
                                 return;
                             }
                             if (result.affectedRows === 1) {
+                                logger.info(`/api/submit-ticket: ${req.user.email} has submitted a ticket`);
                                 res.sendStatus(201);
                                 return;
                             }
@@ -323,16 +347,17 @@ app.get('/api/get-open-tickets', (req, res) => {
         return;
     }
     if (!db_connected) {
+        logger.error("/api/get-open-tickets: Database disconnected, Cannot GET");
         res.sendStatus(503);
         return;
     }
     connection.query("SELECT tickets.id, users.name, users.email, tickets.submit_time, tickets.location, tickets.tags, tickets.message FROM tickets INNER JOIN users ON tickets.hacker_id=users.id WHERE tickets.status = 'Open' ORDER BY tickets.submit_time ASC", 
                     (err, rows) => {
                         if (err) {
+                            logger.error(`/get-open-tickets: Database error: ${err.code}`);
                             res.sendStatus(500);
                             return;
                         }
-                        console.log(`Sending open tickets to ${req.user.name}`);
                         res.json(rows);
                     });
 });
@@ -347,16 +372,17 @@ app.get('/api/get-all-tickets', (req, res) => {
         return;
     }
     if (!db_connected) {
+        logger.error("/api/get-all-tickets: Database disconnected, Cannot GET");
         res.sendStatus(503);
         return;
     }
     connection.query("SELECT tickets.id, users.name, users.email, tickets.submit_time, tickets.location, tickets.tags, tickets.message, tickets.status FROM tickets INNER JOIN users ON tickets.hacker_id=users.id ORDER BY tickets.submit_time ASC", 
                     (err, rows) => {
                         if (err) {
+                            logger.error(`/get-all-tickets: Database error: ${err.code}`);
                             res.sendStatus(500);
                             return;
                         }
-                        console.log(`Sending all tickets to ${req.user.name}`);
                         res.json(rows);
                     });
 });
@@ -371,6 +397,7 @@ app.get('/api/get-mentor-tickets', (req, res) => {
         return;
     }
     if (!db_connected) {
+        logger.error("/api/get-mentor-tickets: Database disconnected, Cannot GET");
         res.sendStatus(503);
         return;
     }
@@ -378,10 +405,10 @@ app.get('/api/get-mentor-tickets', (req, res) => {
                     [req.user.id],
                     (err, rows) => {
                         if (err) {
+                            logger.error(`/get-mentor-tickets: Database error: ${err.code}`);
                             res.sendStatus(500);
                             return;
                         }
-                        console.log(`Sending mentor's claimed tickets to ${req.user.name}`);
                         res.json(rows);
                     });
 });
@@ -396,6 +423,7 @@ app.get('/api/get-hacker-tickets', (req, res) => {
         return;
     }
     if (!db_connected) {
+        logger.error("/api/get-hacker-tickets: Database disconnected, Cannot GET");
         res.sendStatus(503);
         return;
     }
@@ -403,10 +431,10 @@ app.get('/api/get-hacker-tickets', (req, res) => {
                     [req.user.id],
                     (err, rows) => {
                         if (err) {
+                            logger.error(`/get-hacker-tickets: Database error: ${err.code}`);
                             res.sendStatus(500);
                             return;
                         }
-                        console.log(`Sending hackers open/claimed tickets to ${req.user.name}`);
                         res.json(rows);
                     });
 });
@@ -427,19 +455,23 @@ app.post('/api/claim-ticket', (req, res) => {
         return;
     }
     if(req.body.id == undefined) {
+        logger.info('/api/claim-ticket: id is undefined')
         res.sendStatus(400);
         return;
     }
     if (!db_connected) {
+        logger.error("/api/claim-ticket: Database disconnected, Cannot POST");
         res.sendStatus(503);
         return;
     }
     connection.query("UPDATE tickets SET mentor_id = ?, status = 'Claimed' WHERE mentor_id IS NULL AND id = ?", [req.user.id, req.body.id], (err, result) => {
         if (err) {
+            logger.error(`/claim-ticket: Database error: ${err.code}`);
             res.sendStatus(500);
             return;
         }
         if (result.affectedRows === 1) {
+            logger.info(`/api/claim-ticket: ${req.user.email} has claimed ticket ${req.body.id}`);
             res.json({claimed: true});
         }
         else {
@@ -464,22 +496,27 @@ app.post('/api/unclaim-ticket', (req, res) => {
         return;
     }
     if(req.body.id == undefined) {
+        logger.info('/api/unclaim-ticket: id is undefined')
         res.sendStatus(400);
         return;
     }
     if (!db_connected) {
+        logger.error("/api/unclaim-ticket: Database disconnected, Cannot POST");
         res.sendStatus(503);
         return;
     }
     connection.query("UPDATE tickets SET mentor_id = NULL, status = 'Open' WHERE mentor_id = ? AND id = ? AND status = 'Claimed'", [req.user.id, req.body.id], (err, result) => {
         if (err) {
+            logger.error(`/api/unclaim-ticket: Database error: ${err.code}`);
             res.sendStatus(500);
             return;
         }
         if (result.affectedRows === 1) {
+            logger.info(`/api/unclaim-ticket: ${req.user.email} has unclaimed ticket ${req.body.id}`);
             res.json({unclaimed: true});
         }
         else {
+            logger.info(`/api/unclaim-ticket: ${req.user.email} has failed to unclaim ticket ${req.body.id}`);
             res.json({unclaimed: false});
         }
     });
@@ -501,22 +538,27 @@ app.post('/api/close-ticket', (req, res) => {
         return;
     }
     if(req.body.id == undefined) {
+        logger.info('/api/close-ticket: id is undefined')
         res.sendStatus(400);
         return;
     }
     if (!db_connected) {
+        logger.error("/api/close-ticket: Database disconnected, Cannot POST");
         res.sendStatus(503);
         return;
     }
     connection.query("UPDATE tickets SET status = 'Closed' WHERE mentor_id = ? AND id = ? AND status = 'Claimed'", [req.user.id, req.body.id], (err, result) => {
         if (err) {
+            logger.error(`/api/close-ticket: Database error: ${err.code}`);
             res.sendStatus(500);
             return;
         }
         if (result.affectedRows === 1) {
+            logger.info(`/api/close-ticket: ${req.user.email} has closed ticket ${req.body.id}`);
             res.json({unclaimed: true});
         }
         else {
+            logger.info(`/api/close-ticket: ${req.user.email} has failed to close ticket ${req.body.id}`);
             res.json({unclaimed: false});
         }
     });
@@ -543,10 +585,12 @@ app.post('/api/checkin-mentor', (req, res) => {
         return;
     }
     if(req.body.email == undefined) {
+        logger.info('/api/checkin-mentor: email is undefined')
         res.sendStatus(400);
         return;
     }
     if (!db_connected) {
+        logger.error("/api/checkin-mentor: Database disconnected, Cannot POST");
         res.sendStatus(503);
         return;
     }
@@ -554,14 +598,16 @@ app.post('/api/checkin-mentor', (req, res) => {
                         [req.body.email],
                         (err, result) => {
                             if (err) {
-                                console.log(err);
+                                logger.error(`/api/checkin-mentor: Database error: ${err.code}`);
                                 res.sendStatus(500);
                                 return;
                             }
                             if (result.affectedRows === 1) {
+                                logger.info(`/api/checkin-mentor: checked in ${req.body.email}`);
                                 res.json({success: true});
                             }
                             else {
+                                logger.info(`/api/checkin-mentor: failed to check in ${req.body.email}`);
                                 res.json({success: false});
                             }
                         });
@@ -588,10 +634,12 @@ app.post('/api/checkout-mentor', (req, res) => {
         return;
     }
     if(req.body.email == undefined) {
+        logger.info('/api/checkout-mentor: email is undefined')
         res.sendStatus(400);
         return;
     }
     if (!db_connected) {
+        logger.error("/api/checkout-mentor: Database disconnected, Cannot POST");
         res.sendStatus(503);
         return;
     }
@@ -599,14 +647,16 @@ app.post('/api/checkout-mentor', (req, res) => {
                         [req.body.email],
                         (err, result) => {
                             if (err) {
-                                console.log(err);
+                                logger.error(`/api/checkout-mentor: Database error: ${err.code}`);
                                 res.sendStatus(500);
                                 return;
                             }
                             if (result.affectedRows === 1) {
+                                logger.info(`/api/checkout-mentor: checked out ${req.body.email}`);
                                 res.json({success: true});
                             }
                             else {
+                                logger.info(`/api/checkout-mentor: failed to check out ${req.body.email}`);
                                 res.json({success: false});
                             }
                         });
@@ -618,11 +668,13 @@ app.get('/api/get-current-mentors', (req, res) => {
         return;
     }
     if (!db_connected) {
+        logger.error("/api/get-current-mentors: Database disconnected, Cannot GET");
         res.sendStatus(503);
         return;
     }
     connection.query("SELECT users.name, users.email, mentors.skills, (SELECT COUNT(status) > 0 FROM tickets WHERE mentor_id = 2 AND status LIKE 'Claimed') AS status, mentors.start_time, TIMEDIFF(NOW(), mentors.start_time) AS elapsed_time FROM mentors INNER JOIN users ON mentors.mentor_id=users.id WHERE mentors.status = 'In'", (err, rows) => {
         if (err) {
+            logger.error(`/api/get-current-mentors: Database error: ${err.code}`);
             res.sendStatus(500);
             return;
         }
@@ -643,10 +695,12 @@ const sendgrid_options = {
 
 app.post('/api/request-password-reset', (req, res) => {
     if (req.body.email == undefined) {
+        logger.info('/api/request-password-reset: email is undefined')
         res.sendStatus(400);
         return;
     }
     if (!db_connected) {
+        logger.error("/api/request-password-reset: Database disconnected, Cannot POST");
         res.sendStatus(503);
         return;
     }
@@ -656,6 +710,7 @@ app.post('/api/request-password-reset', (req, res) => {
                         [hashed_token, req.body.email],
                         (err, result) => {
                             if (err) {
+                                logger.error(`/api/request-password-reset: Database error: ${err.code}`);
                                 res.sendStatus(500);
                                 return;
                             }
@@ -665,7 +720,7 @@ app.post('/api/request-password-reset', (req, res) => {
                                 //get name of user
                                 connection.query("SELECT name FROM users WHERE email = ?", [req.body.email], (err, rows) => {
                                     if (err) {
-                                        console.log("Failed to get name for password reset. No email sent");
+                                        logger.error(`/api/request-password-reset:  Database error: ${err.code}. No email sent`);
                                         return;
                                     }
                                     //send email
@@ -678,8 +733,7 @@ app.post('/api/request-password-reset', (req, res) => {
                                     
                                         sendgrid_res.on("end", function () {
                                           var body = Buffer.concat(chunks);
-                                          console.log("Response from sendgrid:");
-                                          console.log(body);
+                                          logger.info("/api/request-password-reset: data sent to sendgrid")
                                         });
                                       });
 
@@ -689,12 +743,13 @@ app.post('/api/request-password-reset', (req, res) => {
                                            dynamic_template_data: 
                                             { "reset_link": reset_link} } ],
                                       from: { email: process.env.SENDGRID_FROM_ADDRESS, name: 'The Hello Mentors Team' },
-                                      template_id: 'd-78494412b4964869a436b164cb32214a' }));
+                                      template_id: process.env.SENDGRID_TEMPLATE }));
                                     sendgrid_req.end();
                                 });
                             }
                             else {
                                 //invalid email
+                                logger.info(`/api/request-password-reset: Invalid email: ${req.body.email}`);
                                 res.sendStatus(200);
                             }
                         });
@@ -710,6 +765,7 @@ app.get('/add-hacker', (req, res) => {
         return;
     }
     if (!db_connected) {
+        logger.error("/add-hacker: Database disconnected, Cannot GET");
         res.sendStatus(503);
         return;
     }
@@ -726,6 +782,7 @@ app.get('/add-mentor', (req, res) => {
         return;
     }
     if (!db_connected) {
+        logger.error("/add-mentor: Database disconnected, Cannot GET");
         res.sendStatus(503);
         return;
     }
@@ -757,24 +814,27 @@ app.post('/api/add-hacker', (req, res) => {
         return;
     }
     if (req.body.name == undefined || req.body.email == undefined) {
+        logger.info('/api/add-hacker: Required information undefined');
         res.sendStatus(400);
     }
     if (!db_connected) {
+        logger.error("/api/add-hacker: Database disconnected, Cannot POST");
         res.sendStatus(503);
         return;
     }
     connection.query("INSERT INTO users (name, email, role) VALUES(?, ?, 'HACKER')", [req.body.name, req.body.email], (err, result) => {
         if ( err && err.errno === 1062) {
             //email already in use
+            logger.info(`/api/add-hacker: Failed to create account for ${req.body.email}, Email already in use`);
             res.status(400).json({error: "Email already in use"});
             return;
         }
         if (err) {
-            console.log(err);
+            logger.error(`/api/add-hacker:  Database error: ${err.code}`);
             res.sendStatus(500);
             return;
         }
-        console.log(`Created hacker account for ${req.body.email}`);
+        logger.info(`/api/add-hacker: Created hacker account for ${req.body.email}`);
         res.sendStatus(200);
     });
 });
@@ -801,27 +861,30 @@ app.post('/api/add-mentor', (req, res) => {
         return;
     }
     if (req.user.role !== "Organizer") {
+        logger.info('/api/add-mentor: Required information undefined');
         res.sendStatus(403);
         return;
     }
     if (!db_connected) {
+        logger.error("/api/add-mentor: Database disconnected, Cannot POST");
         res.sendStatus(503);
         return;
     }
     connection.query('CALL insert_mentor(?, ?, ?)', [req.body.name, req.body.email, req.body.tags], (err, result) => {
         if ( err && err.errno === 1062) {
             //email already in use
+            logger.info(`/api/add-mrntor: Failed to create account for ${req.body.email}, Email already in use`);
             res.status(400).json({error: "Email already in use"});
             return;
         }
         if (err) {
-            console.log(err);
+            logger.error(`/api/add-mentor:  Database error: ${err.code}`);
             res.sendStatus(500);
             return;
         }
-        console.log(`Created mentor account for ${req.body.email}`);
+        logger.info(`/api/add-mentor: Created mentor account for ${req.body.email}`);
         res.sendStatus(200);
     });
 });
 
-app.listen(port, () => console.log(`App is listening on port ${port}`));
+app.listen(port, () => logger.info(`Server has started: listening on port ${port}`));

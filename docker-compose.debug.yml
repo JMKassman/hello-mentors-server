@@ -33,6 +33,8 @@ services:
     ports:
       - ${PORT}:${PORT}
       - 9229:9229
+    volumes:
+      - ./logs:/logs
     command: npm run debug
     depends_on:
       mysql-debug:
