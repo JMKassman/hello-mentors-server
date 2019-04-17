@@ -13,7 +13,7 @@ CREATE TABLE `users`
   `email` VARCHAR(255),
   UNIQUE KEY unique_email(email),
   `password` VARCHAR(255),
-  `role` ENUM('Hacker', 'Mentor', 'Coordinator'),
+  `role` ENUM('Hacker', 'Mentor', 'Organizer'),
   `password_reset_token` VARCHAR(255) NULL,
   `password_reset_token_expiration` datetime NULL
 );
